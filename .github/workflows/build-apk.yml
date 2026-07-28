@@ -1,4 +1,4 @@
-name: Build Android APK
+﻿name: Build Android APK
 
 on:
   push:
@@ -19,10 +19,7 @@ jobs:
           node-version: 20
       - run: npm install 2>&1
       - uses: android-actions/setup-android@v3
-
-      - name: Cap copy
-        run: npx cap copy android 2>&1
-
+      - run: npx cap copy android 2>&1
       - name: Build APK
         working-directory: android
         run: |
@@ -30,17 +27,20 @@ jobs:
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
-
-      - name: Upload build log (even on failure)
+      - name: Locate and upload APK
+        run: |
+          echo "Searching for APK..."
+          find . -name "*.apk" -type f 2>&1
+          find . -name "*.apk" -type f -exec cp {} apk-output.apk \; 2>&1 || true
+          ls -la *.apk 2>&1 || echo "No APK found at root"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniPlanner-APK
+          path: "*.apk"
+      - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-log
           path: android/build.log
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: UniPlanner-APK
-          path: "**/*.apk"
