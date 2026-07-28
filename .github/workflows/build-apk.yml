@@ -17,28 +17,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+      - run: npm install 2>&1
       - uses: android-actions/setup-android@v3
 
-      - name: Debug - list android project
-        working-directory: android
-        run: |
-          echo "=== Files ==="
-          ls -la
-          echo "=== Plugins dir ==="
-          ls -la capacitor-cordova-android-plugins/ 2>/dev/null || echo "NO PLUGINS DIR"
-          echo "=== settings ==="
-          cat capacitor.settings.gradle 2>/dev/null || echo "NO SETTINGS"
+      - name: Cap copy
+        run: npx cap copy android 2>&1
 
-      - run: npx cap sync android
-
-      - name: Build APK with logs
+      - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1 || true
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
 
       - name: Upload build log (even on failure)
         if: always()
@@ -47,7 +38,7 @@ jobs:
           name: build-log
           path: android/build.log
 
-      - name: Upload APK (if built)
+      - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
