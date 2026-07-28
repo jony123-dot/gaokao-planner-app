@@ -23,10 +23,10 @@ jobs:
           node-version: 20
 
       - name: Install npm dependencies
-        run: npm install 2>&1
+        run: npm install
 
       - name: Sync web assets to Android
-        run: npx cap copy android 2>&1
+        run: npx cap copy android
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -35,15 +35,14 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          export ANDROID_HOME=${ANDROID_SDK_ROOT:-$ANDROID_HOME}
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms at ANDROID_HOME"
-          ./gradlew assembleDebug --no-daemon 2>&1 || ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -100
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Find and list APK files
+        run: find . -name "*.apk" -type f 2>/dev/null || echo "No APK found with find"; ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "No outputs dir"
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: UniPlanner-APK
-          path: android/app/build/outputs/apk/**/*.apk
-        continue-on-error: true
+          path: "**/*.apk"
