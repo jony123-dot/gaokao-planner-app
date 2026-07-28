@@ -20,15 +20,24 @@ jobs:
       - run: npm install 2>&1
       - run: npx cap copy android 2>&1
       - uses: android-actions/setup-android@v3
+
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           export ANDROID_HOME=${ANDROID_SDK_ROOT:-$ANDROID_HOME}
-          ./gradlew assembleDebug --no-daemon 2>&1 || ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -100
+          ./gradlew assembleDebug --no-daemon 2>&1
+
+      - name: Locate APK
+        working-directory: android
+        run: |
+          echo "Looking for APK..."
+          find . -name "*.apk" -type f 2>/dev/null
+          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug dir"
+          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk dir"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: UniPlanner-APK
-          path: android/app/build/outputs/apk/**/*.apk
-        continue-on-error: true
+          path: android/app/build/outputs/apk/debug/
