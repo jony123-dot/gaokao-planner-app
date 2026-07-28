@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,19 +23,13 @@ jobs:
       - run: npm install
       - run: npx cap copy android
       - uses: android-actions/setup-android@v3
-
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "大学规划 APK v1.0.${{ github.run_number }}"
-          body: "自动构建的 APK 安装包"
-          files: android/app/build/outputs/apk/debug/app-debug.apk
-          make_latest: true
-          fail_on_unmatched_files: false
+          name: UniPlanner-APK
+          path: ./android/app/build/outputs/apk/debug/app-debug.apk
