@@ -19,15 +19,36 @@ jobs:
           node-version: 20
       - run: npm install
       - uses: android-actions/setup-android@v3
-      - run: npx cap copy android
-      - name: Build APK
+
+      - name: Debug - list android project
+        working-directory: android
+        run: |
+          echo "=== Files ==="
+          ls -la
+          echo "=== Plugins dir ==="
+          ls -la capacitor-cordova-android-plugins/ 2>/dev/null || echo "NO PLUGINS DIR"
+          echo "=== settings ==="
+          cat capacitor.settings.gradle 2>/dev/null || echo "NO SETTINGS"
+
+      - run: npx cap sync android
+
+      - name: Build APK with logs
         working-directory: android
         run: |
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          ./gradlew assembleDebug --no-daemon
-      - name: Upload APK
+          ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1 || true
+
+      - name: Upload build log (even on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: android/build.log
+
+      - name: Upload APK (if built)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: UniPlanner-APK
