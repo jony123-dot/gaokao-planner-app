@@ -18,13 +18,18 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - uses: android-actions/setup-android@v3
       - run: npx cap copy android
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          # Ubuntu 22.04 预装 Android SDK
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          echo "SDK: $ANDROID_HOME"
+          ls -la $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.2" > /dev/null 2>&1 || true
           ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
       - uses: actions/upload-artifact@v4
         if: always()
