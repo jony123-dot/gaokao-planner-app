@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大学规划智能体</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+/* === Reset & Base === */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;background:#f4f6fa;color:#1e293b;line-height:1.6;min-height:100vh}
+
+/* === Layout === */
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;background:#1a2332;color:#e2e8f0;padding:32px 24px;flex-shrink:0;display:flex;flex-direction:column}
+.sidebar h1{font-size:1.1rem;font-weight:700;color:#fff;letter-spacing:1px;margin-bottom:4px}
+.sidebar .subtitle{font-size:.8rem;color:#94a3b8;margin-bottom:32px}
+.steps{flex:1;display:flex;flex-direction:column;gap:4px}
+.step-indicator{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:default;font-size:.88rem;transition:all .2s}
+.step-indicator .num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;background:#334155;color:#94a3b8;flex-shrink:0;transition:all .3s}
+.step-indicator.active{background:#2d3a4d}
+.step-indicator.active .num{background:#3b82f6;color:#fff}
+.step-indicator.done .num{background:#22c55e;color:#fff}
+.step-indicator.done .num::after{content:"\2713";font-size:.8rem}
+.step-indicator.done .num span{display:none}
+.step-indicator .label{flex:1}
+.step-indicator .status{font-size:.7rem;color:#64748b}
+
+.main{flex:1;padding:40px;max-width:900px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* === Components === */
+.card{background:#fff;border-radius:12px;padding:28px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #e9edf2}
+.card h2{font-size:1.15rem;font-weight:600;margin-bottom:16px;color:#0f172a}
+.card h3{font-size:1rem;font-weight:600;margin-bottom:10px;color:#1e293b}
+.card p{color:#475569;font-size:.92rem;line-height:1.7}
+.card-header{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.card-header .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+
+label{display:block;font-size:.85rem;font-weight:500;color:#334155;margin-bottom:4px;margin-top:14px}
+label:first-child{margin-top:0}
+select,input[type=text],input[type=number],textarea{width:100%;padding:10px 12px;border:1.5px solid #d1d9e6;border-radius:8px;font-size:.9rem;font-family:inherit;background:#fff;transition:border-color .2s;color:#1e293b}
+select:focus,input:focus,textarea:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+textarea{resize:vertical;min-height:70px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* === Tags / Chips === */
+.tag-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:.8rem;cursor:pointer;border:1.5px solid #d1d9e6;background:#fff;color:#475569;transition:all .2s;user-select:none}
+.tag:hover{border-color:#94a3b8}
+.tag.selected{border-color:#3b82f6;background:#eff6ff;color:#2563eb;font-weight:500}
+.tag .emoji{font-size:1rem}
+
+/* === Buttons === */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border-radius:8px;font-size:.9rem;font-weight:500;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-primary:hover{background:#1d4ed8;transform:translateY(-1px)}
+.btn-primary:disabled{background:#94a3b8;cursor:not-allowed;transform:none}
+.btn-outline{background:transparent;color:#475569;border:1.5px solid #d1d9e6}
+.btn-outline:hover{background:#f1f5f9;border-color:#94a3b8}
+.btn-success{background:#16a34a;color:#fff}
+.btn-success:hover{background:#15803d}
+.btn-sm{padding:6px 14px;font-size:.82rem}
+.btn-group{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+
+/* === University Cards === */
+.uni-list{display:grid;gap:12px}
+.uni-card{padding:16px 20px;border:1.5px solid #e9edf2;border-radius:10px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:14px}
+.uni-card:hover{border-color:#3b82f6;background:#f8faff}
+.uni-card.selected{border-color:#3b82f6;background:#eff6ff;box-shadow:0 0 0 1px #3b82f6}
+.uni-card .rank{width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#64748b;flex-shrink:0}
+.uni-card .info{flex:1}
+.uni-card .info h4{font-size:.95rem;font-weight:600;color:#0f172a}
+.uni-card .info .meta{font-size:.8rem;color:#64748b;margin-top:2px}
+.uni-card .score-badge{background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:6px;font-size:.78rem;font-weight:600;flex-shrink:0}
+
+/* === Major Cards === */
+.majors-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.major-card{padding:14px 16px;border:1.5px solid #e9edf2;border-radius:10px;cursor:pointer;transition:all .2s}
+.major-card:hover{border-color:#3b82f6}
+.major-card.selected{border-color:#3b82f6;background:#eff6ff}
+.major-card h4{font-size:.88rem;font-weight:600;color:#0f172a}
+.major-card .cat{font-size:.75rem;color:#64748b;margin-top:2px}
+.major-card .req{font-size:.75rem;color:#2563eb;margin-top:4px;background:#eff6ff;display:inline-block;padding:1px 8px;border-radius:4px}
+.major-card .match{font-size:.75rem;font-weight:600;margin-top:4px}
+
+/* === Roadmap === */
+.roadmap{margin-top:16px}
+.rm-phase{margin-bottom:24px}
+.rm-phase h3{color:#2563eb;font-size:.95rem;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.rm-phase h3 .phase-icon{width:8px;height:8px;border-radius:50%;display:inline-block}
+.rm-task{display:flex;gap:12px;padding:10px 14px;border-left:2.5px solid #d1d9e6;margin-left:6px;padding-left:20px;position:relative}
+.rm-task::before{content:'';position:absolute;left:-5px;top:16px;width:8px;height:8px;border-radius:50%;background:#d1d9e6}
+.rm-task.done::before{background:#22c55e}
+.rm-task .cb{flex-shrink:0;margin-top:2px}
+.rm-task .cb input{width:16px;height:16px;cursor:pointer;accent-color:#3b82f6}
+.rm-task .content{flex:1}
+.rm-task .content .title{font-size:.88rem;font-weight:500;color:#0f172a}
+.rm-task .content .desc{font-size:.8rem;color:#64748b;margin-top:2px}
+.rm-task .content .time{font-size:.75rem;color:#94a3b8;margin-top:2px}
+
+/* === Summary === */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.summary-item{background:#f8faff;border:1px solid #e9edf2;border-radius:10px;padding:16px;text-align:center}
+.summary-item .s-val{font-size:1.3rem;font-weight:700;color:#2563eb}
+.summary-item .s-label{font-size:.8rem;color:#64748b;margin-top:2px}
+
+/* === Progress Bar === */
+.progress-track{margin-bottom:24px}
+.progress-bar{height:4px;background:#e9edf2;border-radius:4px;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#3b82f6,#2563eb);border-radius:4px;transition:width .5s ease}
+.progress-label{display:flex;justify-content:space-between;font-size:.78rem;color:#64748b;margin-top:6px}
+
+/* === Province selector enhanced === */
+.province-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}
+.province-item{padding:6px 8px;text-align:center;border:1.5px solid #d1d9e6;border-radius:8px;cursor:pointer;font-size:.78rem;transition:all .2s}
+.province-item:hover{border-color:#3b82f6}
+.province-item.selected{border-color:#3b82f6;background:#eff6ff;color:#2563eb;font-weight:500}
+
+/* === Interest grid === */
+.interest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.interest-item{padding:10px 12px;border:1.5px solid #e9edf2;border-radius:10px;cursor:pointer;transition:all .2s;text-align:center}
+.interest-item:hover{border-color:#3b82f6;background:#f8faff}
+.interest-item.selected{border-color:#3b82f6;background:#eff6ff}
+.interest-item .iemoji{font-size:1.4rem;display:block;margin-bottom:4px}
+.interest-item .ilabel{font-size:.78rem;color:#475569}
+
+/* === Modal === */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.modal h2{font-size:1.15rem;margin-bottom:12px}
+.modal p{color:#475569;font-size:.9rem;line-height:1.7;margin-bottom:10px}
+.modal .close-btn{float:right;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#94a3b8;padding:4px}
+.modal .close-btn:hover{color:#475569}
+
+.tag-info{background:#f0f7ff;border-left:3px solid #3b82f6;padding:10px 14px;border-radius:0 8px 8px 0;font-size:.82rem;color:#475569;margin-top:8px}
+
+/* === Responsive === */
+@media(max-width:768px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;padding:16px 20px;flex-direction:row;flex-wrap:wrap;gap:0}
+  .sidebar h1{font-size:1rem}
+  .sidebar .subtitle{display:none}
+  .steps{flex-direction:row;overflow-x:auto;gap:2px;margin-top:8px;width:100%}
+  .step-indicator{padding:6px 10px;white-space:nowrap;font-size:.78rem;flex-shrink:0}
+  .step-indicator .num{width:22px;height:22px;font-size:.65rem}
+  .main{padding:20px 16px}
+  .form-row{grid-template-columns:1fr}
+  .majors-grid{grid-template-columns:1fr}
+  .summary-grid{grid-template-columns:1fr 1fr}
+  .province-group{grid-template-columns:repeat(auto-fill,minmax(65px,1fr))}
+  .interest-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+  .uni-list{grid-template-columns:1fr}
+}
+
+/* Scrollbar */
+.main::-webkit-scrollbar{width:5px}
+.main::-webkit-scrollbar-track{background:transparent}
+.main::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <h1>大学规划</h1>
+    <div class="subtitle">智能体 · 发现你的目标</div>
+    <div class="steps" id="stepList">
+      <div class="step-indicator active" data-step="0">
+        <div class="num"><span>1</span></div>
+        <span class="label">学生档案</span>
+        <span class="status"></span>
+      </div>
+      <div class="step-indicator" data-step="1">
+        <div class="num"><span>2</span></div>
+        <span class="label">探索院校</span>
+        <span class="status"></span>
+      </div>
+      <div class="step-indicator" data-step="2">
+        <div class="num"><span>3</span></div>
+        <span class="label">匹配专业</span>
+        <span class="status"></span>
+      </div>
+      <div class="step-indicator" data-step="3">
+        <div class="num"><span>4</span></div>
+        <span class="label">目标路线图</span>
+        <span class="status"></span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main" id="mainContent">
+
+    <!-- PAGE 0: PROFILE -->
+    <div class="page active" id="page0">
+      <div class="progress-track">
+        <div class="progress-bar"><div class="fill" style="width:0%"></div></div>
+        <div class="progress-label"><span>了解你自己</span><span></span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="icon">📋</div><h2>基本信息</h2></div>
+
+        <label>你所在的省份</label>
+        <div class="province-group" id="provinceSelector"></div>
+
+        <label>高考类型</label>
+        <select id="examType">
+          <option value="理科">理科（传统高考）</option>
+          <option value="文科">文科（传统高考）</option>
+          <option value="3+1+2">新高考 3+1+2</option>
+          <option value="3+3">新高考 3+3</option>
+        </select>
+
+        <div id="subjectSelection" style="display:none;margin-top:10px">
+          <label>你的选考科目（可多选）</label>
+          <div class="tag-group" id="subjectTags"></div>
+          <div class="tag-info">新高考选科要求：不同专业对选考科目有不同要求，我们将据此匹配。</div>
+        </div>
+
+        <label>当前年级</label>
+        <select id="grade">
+          <option value="高一">高一</option>
+          <option value="高二">高二</option>
+          <option value="高三上">高三上学期</option>
+          <option value="高三下">高三下学期</option>
+        </select>
+
+        <div class="form-row">
+          <div>
+            <label>当前年级排名（约前 %）</label>
+            <input type="number" id="rankPercent" min="1" max="100" placeholder="例如 15 表示前15%">
+          </div>
+          <div>
+            <label>预估高考总分</label>
+            <input type="number" id="estimatedScore" min="300" max="750" placeholder="可粗略估计">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="icon">💡</div><h2>兴趣与特长</h2></div>
+
+        <label>你对哪些领域感兴趣？（可多选）</label>
+        <div class="interest-grid" id="interestGrid"></div>
+
+        <label>你的优势学科（可多选）</label>
+        <div class="tag-group" id="strengthTags"></div>
+
+        <label>其他想补充的信息</label>
+        <textarea id="extraInfo" placeholder="例如：参加过信息学竞赛、喜欢动手实验、未来想创业等……"></textarea>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="nextStep()">下一步  探索院校</button>
+      </div>
+    </div>
+
+    <!-- PAGE 1: UNIVERSITIES -->
+    <div class="page" id="page1">
+      <div class="progress-track">
+        <div class="progress-bar"><div class="fill" style="width:33%"></div></div>
+        <div class="progress-label"><span>探索院校</span><span id="uniCount"></span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="icon">🔍</div><h2>为你推荐的院校</h2></div>
+        <p style="margin-bottom:12px">根据你的档案，以下是适合你分数段和兴趣方向的大学。点击查看详情并选择目标院校。</p>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <select id="uniFilter" style="width:auto;flex:1;min-width:120px">
+            <option value="all">全部层次</option>
+            <option value="985">985 院校</option>
+            <option value="211">211 院校</option>
+            <option value="双一流">双一流</option>
+          </select>
+          <input type="text" id="uniSearch" placeholder="搜索大学名称..." style="width:auto;flex:1;min-width:140px">
+        </div>
+        <div class="uni-list" id="uniList"></div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">  上一步</button>
+        <button class="btn btn-primary" onclick="nextStep()" id="uniNextBtn" disabled>下一步  匹配专业</button>
+      </div>
+    </div>
+
+    <!-- PAGE 2: MAJORS -->
+    <div class="page" id="page2">
+      <div class="progress-track">
+        <div class="progress-bar"><div class="fill" style="width:66%"></div></div>
+        <div class="progress-label"><span>匹配专业</span><span id="majorCount"></span></div>
+      </div>
+
+      <div class="card" id="selectedUniCard">
+        <div class="card-header"><div class="icon">🏛️</div>
+          <h2>目标院校：<span id="selectedUniName"></span></h2>
+        </div>
+        <p id="selectedUniDesc"></p>
+        <div id="selectedUniScores" style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap">
+          <span style="font-size:.82rem;background:#f1f5f9;padding:4px 12px;border-radius:6px;">📊 理科参考线: <strong id="scoreScience">-</strong>分</span>
+          <span style="font-size:.82rem;background:#f1f5f9;padding:4px 12px;border-radius:6px;">📊 文科参考线: <strong id="scoreArts">-</strong>分</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="icon">🎯</div><h2>专业匹配</h2></div>
+        <p style="margin-bottom:12px">系统根据你的兴趣、优势学科和选考科目，计算了每个专业的匹配度。请选择一个你心仪的专业。</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <select id="majorFilter" style="width:auto;flex:1;min-width:120px">
+            <option value="all">全部类别</option>
+          </select>
+          <input type="text" id="majorSearch" placeholder="搜索专业..." style="width:auto;flex:1;min-width:140px">
+        </div>
+        <div class="majors-grid" id="majorList"></div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">  上一步</button>
+        <button class="btn btn-primary" onclick="nextStep()" id="majorNextBtn" disabled>下一步  查看路线图</button>
+      </div>
+    </div>
+
+    <!-- PAGE 3: ROADMAP -->
+    <div class="page" id="page3">
+      <div class="progress-track">
+        <div class="progress-bar"><div class="fill" style="width:100%"></div></div>
+        <div class="progress-label"><span>你的专属路线图</span><span>🎉 目标已确立</span></div>
+      </div>
+
+      <div class="card" style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-color:#bfdbfe">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:2rem">🎯</span>
+          <div>
+            <h2 style="margin-bottom:2px">目标：<span id="finalUni"></span> · <span id="finalMajor"></span></h2>
+            <p style="font-size:.85rem;color:#475569">来自 <span id="finalProvince"></span> · <span id="finalGrade"></span> · 预估 <span id="finalScore"></span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-grid" id="summaryGrid"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="icon">🗺️</div><h2>任务分解路线图</h2></div>
+        <p style="font-size:.85rem;color:#64748b;margin-bottom:12px">根据你的目标，为你拆解了从当前阶段到录取的完整行动路线。每个任务都可以勾选跟踪进度。</p>
+        <div id="roadmapContainer" class="roadmap"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="icon">💪</div><h2>关键提醒</h2></div>
+        <div id="tipsContainer"></div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="prevStep()">  重新规划</button>
+        <button class="btn btn-success" onclick="window.print()">🖨️ 打印路线图</button>
+        <button class="btn btn-primary" onclick="resetAll()">🔄 重新开始</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- University Detail Modal -->
+<div class="modal-overlay" id="uniModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeUniModal()">✕</button>
+    <h2 id="modalUniName"></h2>
+    <p id="modalUniDesc"></p>
+    <div id="modalUniScores" style="margin:10px 0"></div>
+    <h3 style="margin-top:14px;font-size:.95rem">优势学科 / 知名专业</h3>
+    <div id="modalUniMajors" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+    <button class="btn btn-primary btn-sm" onclick="selectUniFromModal()" style="margin-top:16px">选择此院校</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   DATA
+   ===================================================================== */
+
+const PROVINCES = ['北京','天津','上海','重庆','河北','山西','辽宁','吉林','黑龙江','江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','海南','四川','贵州','云南','陕西','甘肃','青海','台湾','内蒙古','广西','西藏','宁夏','新疆'];
+
+const INTERESTS = [
+  {id:'math',emoji:'🔢',label:'数学与逻辑'},
+  {id:'physics',emoji:'⚛️',label:'物理与天文'},
+  {id:'chemistry',emoji:'🧪',label:'化学与材料'},
+  {id:'biology',emoji:'🧬',label:'生物与医学'},
+  {id:'computer',emoji:'💻',label:'计算机与AI'},
+  {id:'engineering',emoji:'⚙️',label:'工程与技术'},
+  {id:'electronics',emoji:'🔌',label:'电子与信息'},
+  {id:'architecture',emoji:'🏗️',label:'建筑与设计'},
+  {id:'economics',emoji:'📈',label:'经济与金融'},
+  {id:'law',emoji:'⚖️',label:'法学与社科'},
+  {id:'literature',emoji:'📚',label:'文学与传媒'},
+  {id:'education',emoji:'🍎',label:'教育与心理'},
+  {id:'medicine',emoji:'🏥',label:'临床医学'},
+  {id:'environment',emoji:'🌿',label:'环境与生态'},
+  {id:'space',emoji:'🚀',label:'航天与国防'},
+];
+
+const ALL_SUBJECTS = ['物理','化学','生物','思想政治','历史','地理','技术'];
+const STRENGTH_SUBJECTS = ['语文','数学','英语','物理','化学','生物','历史','政治','地理','信息技术','通用技术'];
+
+const MAJOR_CATEGORIES = {
+  '计算机类':['计算机科学与技术','软件工程','网络空间安全','人工智能','数据科学与大数据技术','数字媒体技术'],
+  '电子信息类':['电子信息工程','通信工程','微电子科学与工程','光电信息科学与工程','自动化','机器人工程'],
+  '数学与物理类':['数学与应用数学','信息与计算科学','统计学','物理学','应用物理学'],
+  '化学与材料类':['化学','应用化学','材料科学与工程','高分子材料与工程','化学工程与工艺'],
+  '生物与医学类':['生物科学','生物技术','临床医学','药学','生物医学工程','口腔医学','预防医学'],
+  '机械与土木类':['机械工程','车辆工程','土木工程','水利水电工程','建筑环境与能源应用工程'],
+  '建筑与设计类':['建筑学','城乡规划','风景园林','工业设计','视觉传达设计'],
+  '经济与管理类':['经济学','金融学','国际经济与贸易','工商管理','会计学','财务管理','电子商务'],
+  '人文与社科类':['法学','新闻传播学','汉语言文学','英语','哲学','社会学','公共管理','教育学','心理学'],
+  '环境与能源类':['环境工程','环境科学','能源与动力工程','新能源科学与工程','核工程与核技术'],
+  '航空航天类':['航空航天工程','飞行器设计与工程','探测制导与控制技术'],
+};
+
+const INTEREST_MAJOR_MAP = {
+  math:['数学与物理类','计算机类'],
+  physics:['数学与物理类','电子信息类','航空航天类'],
+  chemistry:['化学与材料类','环境与能源类'],
+  biology:['生物与医学类','环境与能源类'],
+  computer:['计算机类','电子信息类'],
+  engineering:['机械与土木类','电子信息类','航空航天类'],
+  electronics:['电子信息类','计算机类'],
+  architecture:['建筑与设计类','机械与土木类'],
+  economics:['经济与管理类'],
+  law:['人文与社科类'],
+  literature:['人文与社科类'],
+  education:['人文与社科类'],
+  medicine:['生物与医学类'],
+  environment:['环境与能源类','生物与医学类'],
+  space:['航空航天类','电子信息类'],
+};
+
+const MAJOR_SUBJECT_REQ = {
+  '计算机类':['物理'],
+  '电子信息类':['物理'],
+  '数学与物理类':['物理'],
+  '化学与材料类':['化学','物理'],
+  '生物与医学类':['物理','化学','生物'],
+  '机械与土木类':['物理'],
+  '建筑与设计类':['物理','历史'],
+  '经济与管理类':['物理','历史'],
+  '人文与社科类':['历史'],
+  '环境与能源类':['物理','化学'],
+  '航空航天类':['物理'],
+};
+
+const STRENGTH_MAJOR_MAP = {
+  '数学':['数学与物理类','计算机类','经济与管理类','电子信息类'],
+  '物理':['数学与物理类','电子信息类','机械与土木类','航空航天类','计算机类'],
+  '化学':['化学与材料类','生物与医学类','环境与能源类'],
+  '生物':['生物与医学类','环境与能源类'],
+  '语文':['人文与社科类'],
+  '英语':['人文与社科类','经济与管理类'],
+  '历史':['人文与社科类'],
+  '政治':['人文与社科类','经济与管理类'],
+  '地理':['环境与能源类','建筑与设计类'],
+  '信息技术':['计算机类','电子信息类'],
+  '通用技术':['计算机类','电子信息类','机械与土木类'],
+};
+
+/* Universities data */
+const UNIVERSITIES = [
+  {
+    id:'zju',name:'浙江大学',city:'杭州',level:'985',rank:3,
+    desc:'浙江大学是教育部直属的综合性全国重点大学，位列国家双一流A类、985工程、211工程。在2024年QS世界大学排名中位列第44位，国内第3。浙大拥有强大的工科、理科、医学和农学实力，计算机、控制科学、光学工程、临床医学等学科均居全国前列。',
+    scores:{江西:{理科:668,文科:634}},
+    majors:['计算机科学与技术','软件工程','人工智能','电子信息工程','自动化','机器人工程','光电信息科学与工程','微电子科学与工程','数学与应用数学','统计学','物理学','化学','生物科学','临床医学','药学','口腔医学','生物医学工程','机械工程','能源与环境系统工程','土木工程','建筑学','城乡规划','经济学','金融学','工商管理','会计学','法学','新闻传播学','汉语言文学','英语','公共管理','教育学','心理学','材料科学与工程','高分子材料与工程','化学工程与工艺','环境工程','食品科学与工程','农业工程'],
+    topMajors:['计算机科学与技术','临床医学','光学工程','控制科学与工程','软件工程','农业工程','化学','材料科学与工程']
+  },
+  {
+    id:'pku',name:'北京大学',city:'北京',level:'985',rank:1,
+    desc:'北京大学是中国第一所国立综合性大学，位列双一流A类。拥有全国最顶尖的文科、理科和医学学科。在基础学科、人文社科领域具有无可比拟的优势。',
+    scores:{江西:{理科:685,文科:655}},
+    majors:['数学与应用数学','物理学','化学','生物科学','计算机科学与技术','智能科学与技术','电子信息','临床医学','口腔医学','基础医学','药学','经济学','金融学','工商管理','法学','新闻传播学','汉语言文学','哲学','考古学','社会学','国际政治','英语','心理学','环境科学','城乡规划'],
+    topMajors:['经济学','法学','临床医学','数学','物理学','计算机科学与技术','哲学','中国语言文学']
+  },
+  {
+    id:'thu',name:'清华大学',city:'北京',level:'985',rank:2,
+    desc:'清华大学是中国最顶尖的工科院校，位列双一流A类。工科实力全国第一，计算机、电子、建筑、机械等学科具有国际声誉，经济管理学院也极具影响力。',
+    scores:{江西:{理科:687,文科:658}},
+    majors:['计算机科学与技术','软件工程','人工智能','电子信息工程','微电子科学与工程','自动化','机械工程','车辆工程','精密仪器','能源与动力工程','电气工程','土木工程','水利水电工程','建筑学','城乡规划','环境工程','材料科学与工程','化学工程与工艺','数学与应用数学','物理学','化学','生物科学','经济学','金融学','工商管理','法学','新闻传播学','心理学','临床医学'],
+    topMajors:['计算机科学与技术','建筑学','经济与金融','自动化','电气工程','材料科学与工程','土木工程','电子科学与技术']
+  },
+  {
+    id:'fudan',name:'复旦大学',city:'上海',level:'985',rank:5,
+    desc:'复旦大学是教育部直属的综合性研究型大学，位列双一流A类。在人文社科、自然科学和医学领域实力雄厚，新闻、经济、数学、临床医学等学科全国领先。',
+    scores:{江西:{理科:675,文科:645}},
+    majors:['数学与应用数学','物理学','化学','生物科学','计算机科学与技术','微电子','电子信息','经济学','金融学','工商管理','法学','新闻传播学','汉语言文学','英语','哲学','历史学','社会学','心理学','临床医学','药学','公共卫生','公共管理'],
+    topMajors:['经济学','新闻传播学','临床医学','数学','哲学','政治学','中国语言文学']
+  },
+  {
+    id:'sjtu',name:'上海交通大学',city:'上海',level:'985',rank:4,
+    desc:'上海交通大学是教育部直属的综合性全国重点大学，位列双一流A类。工科实力突出，船舶、机械、电子、计算机等学科全国领先，安泰经管学院和医学院也极具声誉。',
+    scores:{江西:{理科:678,文科:645}},
+    majors:['计算机科学与技术','人工智能','软件工程','电子信息工程','自动化','机械工程','船舶与海洋工程','材料科学与工程','能源与动力工程','电气工程','生物医学工程','数学与应用数学','物理学','化学','生物科学','临床医学','口腔医学','药学','医学检验','经济学','金融学','工商管理','法学','新闻传播学','英语'],
+    topMajors:['船舶与海洋工程','机械工程','临床医学','计算机科学与技术','电子科学与技术','材料科学与工程','生物学']
+  },
+  {
+    id:'nju',name:'南京大学',city:'南京',level:'985',rank:6,
+    desc:'南京大学是教育部直属的综合性全国重点大学，位列双一流A类。以文理见长，天文学、地质学、中国语言文学、物理学等学科全国领先。',
+    scores:{江西:{理科:668,文科:635}},
+    majors:['数学与应用数学','物理学','天文学','化学','生物科学','计算机科学与技术','软件工程','电子信息工程','材料科学与工程','环境工程','地质学','地理信息科学','经济学','金融学','工商管理','法学','新闻传播学','汉语言文学','英语','历史学','哲学','社会学','建筑学'],
+    topMajors:['天文学','物理学','地质学','中国语言文学','计算机科学与技术','化学','环境科学']
+  },
+  {
+    id:'ustc',name:'中国科学技术大学',city:'合肥',level:'985',rank:7,
+    desc:'中国科大是中国科学院直属的理工科顶尖大学，位列双一流A类。以理科和前沿科技著称，物理、化学、地球物理、量子信息等研究领域世界领先。',
+    scores:{江西:{理科:670,文科:null}},
+    majors:['数学与应用数学','物理学','应用物理学','化学','应用化学','材料科学与工程','生物科学','生物技术','计算机科学与技术','人工智能','数据科学','电子信息工程','自动化','机械工程','能源与动力工程','环境工程','核工程与核技术','地球物理学','金融学'],
+    topMajors:['物理学','化学','地球物理学','数学','计算机科学与技术','材料科学与工程']
+  },
+  {
+    id:'wuhan',name:'武汉大学',city:'武汉',level:'985',rank:9,
+    desc:'武汉大学是教育部直属的综合性全国重点大学，位列双一流A类。校园被誉为中国最美大学，法学、测绘、马克思主义理论、水利工程等学科全国领先。',
+    scores:{江西:{理科:650,文科:628}},
+    majors:['计算机科学与技术','软件工程','电子信息工程','数学与应用数学','物理学','化学','生物科学','临床医学','口腔医学','药学','经济学','金融学','工商管理','法学','新闻传播学','汉语言文学','英语','哲学','历史学','公共管理','测绘工程','水利水电工程','电气工程','自动化','建筑学','城乡规划','环境工程'],
+    topMajors:['法学','测绘工程','马克思主义理论','水利工程','图书情报与档案管理','地球物理学']
+  },
+  {
+    id:'hust',name:'华中科技大学',city:'武汉',level:'985',rank:8,
+    desc:'华中科技大学是教育部直属的综合性全国重点大学，位列双一流A类。工科实力强劲，机械、光学、电气、计算机等学科名列前茅，同济医学院附属医院实力雄厚。',
+    scores:{江西:{理科:652,文科:623}},
+    majors:['计算机科学与技术','软件工程','人工智能','电子信息工程','光电信息科学与工程','自动化','机械工程','电气工程','能源与动力工程','土木工程','材料科学与工程','生物医学工程','数学与应用数学','物理学','化学','临床医学','口腔医学','药学','预防医学','经济学','金融学','工商管理','法学','新闻传播学','汉语言文学','英语','建筑学','城乡规划','环境工程'],
+    topMajors:['机械工程','光学工程','电气工程','计算机科学与技术','临床医学','生物医学工程','动力工程及工程热物理']
+  },
+  {
+    id:'sysu',name:'中山大学',city:'广州',level:'985',rank:11,
+    desc:'中山大学是教育部直属的综合性全国重点大学，位列双一流A类。以文理医均衡发展著称，工商管理、生态学、临床医学、哲学等学科全国领先。',
+    scores:{江西:{理科:648,文科:626}},
+    majors:['数学与应用数学','物理学','化学','生物科学','计算机科学与技术','电子信息','自动化','临床医学','口腔医学','药学','预防医学','经济学','金融学','工商管理','会计学','法学','新闻传播学','汉语言文学','英语','哲学','历史学','社会学','地理信息科学','环境工程','城乡规划'],
+    topMajors:['工商管理','生态学','临床医学','哲学','中国语言文学','数学']
+  },
+  {
+    id:'tongji',name:'同济大学',city:'上海',level:'985',rank:13,
+    desc:'同济大学是教育部直属的全国重点大学，位列双一流A类。以土木建筑学科蜚声海内外，城市规划、土木工程、环境工程、设计学等学科全国顶尖。',
+    scores:{江西:{理科:657,文科:628}},
+    majors:['土木工程','建筑学','城乡规划','风景园林','环境工程','给排水科学与工程','机械工程','车辆工程','工业设计','计算机科学与技术','软件工程','电子信息工程','自动化','材料科学与工程','数学与应用数学','物理学','化学','临床医学','口腔医学','经济学','金融学','工商管理','法学','英语','德语'],
+    topMajors:['土木工程','建筑学','城乡规划','环境工程','设计学','交通运输工程']
+  },
+  {
+    id:'hit',name:'哈尔滨工业大学',city:'哈尔滨',level:'985',rank:10,
+    desc:'哈尔滨工业大学是工信部直属的全国重点大学，位列双一流A类。航天、焊接、机器人等研究领域世界知名，被誉为工科大学之母。',
+    scores:{江西:{理科:645,文科:618}},
+    majors:['计算机科学与技术','软件工程','人工智能','电子信息工程','通信工程','自动化','机器人工程','机械工程','车辆工程','材料科学与工程','焊接技术与工程','能源与动力工程','电气工程','土木工程','环境工程','建筑学','城乡规划','数学与应用数学','物理学','工程力学','经济学','工商管理','英语'],
+    topMajors:['机械工程','材料科学与工程','控制科学与工程','计算机科学与技术','土木工程','力学','环境科学']
+  },
+  {
+    id:'xjtu',name:'西安交通大学',city:'西安',level:'985',rank:12,
+    desc:'西安交通大学是教育部直属的全国重点大学，位列双一流A类。以工科见长，电气、动力工程、机械、管理科学等学科实力雄厚，是C9联盟成员。',
+    scores:{江西:{理科:650,文科:622}},
+    majors:['计算机科学与技术','人工智能','软件工程','电子科学与技术','微电子','自动化','机械工程','车辆工程','能源与动力工程','电气工程','核工程与核技术','材料科学与工程','数学与应用数学','物理学','化学','生物医学工程','临床医学','口腔医学','经济学','金融学','工商管理','会计学','法学','公共管理','英语'],
+    topMajors:['电气工程','动力工程及工程热物理','机械工程','管理科学与工程','数学','工商管理']
+  },
+  {
+    id:'nankai',name:'南开大学',city:'天津',level:'985',rank:14,
+    desc:'南开大学是教育部直属的全国重点大学，位列双一流A类。以文理均衡发展著称，化学、数学、历史学、经济学等学科具有深厚底蕴。',
+    scores:{江西:{理科:647,文科:627}},
+    majors:['数学与应用数学','统计学','物理学','化学','生物科学','计算机科学与技术','人工智能','软件工程','环境工程','经济学','金融学','国际经济与贸易','工商管理','会计学','财务管理','法学','汉语言文学','英语','历史学','哲学','公共管理','心理学'],
+    topMajors:['化学','数学','历史学','经济学','工商管理','统计学']
+  },
+  {
+    id:'bnu',name:'北京师范大学',city:'北京',level:'985',rank:15,
+    desc:'北京师范大学是教育部直属的全国重点大学，位列双一流A类。以教育科学、文理基础学科见长，教育学、心理学、中国语言文学、地理学等学科全国领先。',
+    scores:{江西:{理科:639,文科:622}},
+    majors:['教育学','心理学','汉语言文学','英语','历史学','哲学','数学与应用数学','统计学','物理学','化学','生物科学','地理科学','环境工程','计算机科学与技术','人工智能','经济学','金融学','法学','社会学','公共管理'],
+    topMajors:['教育学','心理学','中国语言文学','地理学','数学','历史学']
+  },
+  {
+    id:'bit',name:'北京理工大学',city:'北京',level:'985',rank:18,
+    desc:'北京理工大学是工信部直属的全国重点大学，位列双一流A类。以兵器科学与技术、车辆工程、电子信息等国防特色学科见长。',
+    scores:{江西:{理科:643,文科:617}},
+    majors:['计算机科学与技术','人工智能','软件工程','电子信息工程','自动化','车辆工程','机械工程','能源与动力工程','光电信息科学与工程','数学与应用数学','物理学','化学','工程力学','工商管理','经济学','法学','英语'],
+    topMajors:['兵器科学与技术','车辆工程','自动化','计算机科学与技术','材料科学与工程']
+  },
+  {
+    id:'scut',name:'华南理工大学',city:'广州',level:'985',rank:17,
+    desc:'华南理工大学是教育部直属的全国重点大学，位列双一流A类。以工科见长，轻工技术与工程、建筑学、食品科学等学科全国领先。',
+    scores:{江西:{理科:636,文科:615}},
+    majors:['计算机科学与技术','软件工程','电子信息工程','自动化','机械工程','车辆工程','材料科学与工程','化学工程与工艺','轻化工程','食品科学与工程','建筑学','城乡规划','土木工程','数学与应用数学','物理学','经济学','工商管理','法学','英语'],
+    topMajors:['轻工技术与工程','建筑学','食品科学与工程','化学工程','材料科学与工程']
+  },
+  {
+    id:'seu',name:'东南大学',city:'南京',level:'985',rank:16,
+    desc:'东南大学是教育部直属的全国重点大学，位列双一流A类。以建筑、土木、电子、交通运输等学科著称，建筑学与清华、同济并称建筑三强。',
+    scores:{江西:{理科:641,文科:618}},
+    majors:['建筑学','城乡规划','土木工程','交通工程','计算机科学与技术','软件工程','人工智能','电子信息工程','自动化','数学与应用数学','物理学','材料科学与工程','生物医学工程','临床医学','经济学','工商管理','法学','英语'],
+    topMajors:['建筑学','土木工程','交通运输工程','电子科学与技术','生物医学工程']
+  },
+  {
+    id:'sichuan',name:'四川大学',city:'成都',level:'985',rank:19,
+    desc:'四川大学是教育部直属的全国重点大学，位列双一流A类。由原四川大学、成都科技大学、华西医科大学合并而成，医学、口腔、材料等学科实力突出。',
+    scores:{江西:{理科:632,文科:614}},
+    majors:['临床医学','口腔医学','药学','基础医学','数学与应用数学','物理学','化学','生物科学','计算机科学与技术','软件工程','电子信息','自动化','材料科学与工程','高分子材料与工程','水利水电工程','轻工技术与工程','环境工程','经济学','金融学','法学','新闻传播学','汉语言文学','英语','历史学','哲学','公共管理'],
+    topMajors:['口腔医学','临床医学','材料科学与工程','生物医学工程','中国语言文学','数学']
+  },
+  {
+    id:'csu',name:'中南大学',city:'长沙',level:'985',rank:20,
+    desc:'中南大学是教育部直属的全国重点大学，位列双一流A类。以工医见长，冶金工程、矿业工程、护理学、临床医学等学科全国领先。',
+    scores:{江西:{理科:635,文科:612}},
+    majors:['临床医学','口腔医学','药学','基础医学','计算机科学与技术','人工智能','自动化','电子信息工程','机械工程','材料科学与工程','冶金工程','能源与动力工程','土木工程','数学与应用数学','物理学','化学','经济学','工商管理','法学','英语'],
+    topMajors:['冶金工程','矿业工程','护理学','临床医学','材料科学与工程','机械工程']
+  },
+  {
+    id:'xmu',name:'厦门大学',city:'厦门',level:'985',rank:21,
+    desc:'厦门大学是教育部直属的全国重点大学，位列双一流A类。由爱国华侨领袖陈嘉庚先生创办，以经济、管理、法学和化学、海洋科学著称。',
+    scores:{江西:{理科:638,文科:620}},
+    majors:['经济学','金融学','统计学','工商管理','会计学','财务管理','法学','新闻传播学','汉语言文学','英语','数学与应用数学','物理学','化学','生物科学','海洋科学','环境工程','计算机科学与技术','软件工程','电子信息','自动化','建筑学'],
+    topMajors:['海洋科学','化学','统计学','工商管理','经济学','法学']
+  },
+  {
+    id:'dlut',name:'大连理工大学',city:'大连',level:'985',rank:22,
+    desc:'大连理工大学是教育部直属的全国重点大学，位列双一流A类。以工科为主，力学、机械、化工、土木等学科实力突出。',
+    scores:{江西:{理科:630,文科:610}},
+    majors:['机械工程','船舶与海洋工程','土木工程','水利水电工程','化学工程与工艺','能源与动力工程','材料科学与工程','计算机科学与技术','软件工程','电子信息','自动化','数学与应用数学','物理学','经济学','工商管理','法学','英语'],
+    topMajors:['力学','机械工程','化学工程','土木工程','环境工程']
+  },
+];
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const state = {
+  step: 0,
+  province: '',
+  examType: '理科',
+  subjects: [],
+  grade: '高一',
+  rankPercent: '',
+  estimatedScore: '',
+  interests: [],
+  strengths: [],
+  extraInfo: '',
+  selectedUniId: null,
+  selectedMajor: '',
+};
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+function init() {
+  const ps = document.getElementById('provinceSelector');
+  PROVINCES.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'province-item';
+    el.textContent = p;
+    el.dataset.prov = p;
+    el.onclick = () => {
+      ps.querySelectorAll('.selected').forEach(x=>x.classList.remove('selected'));
+      el.classList.add('selected');
+      state.province = p;
+    };
+    ps.appendChild(el);
+  });
+
+  const ig = document.getElementById('interestGrid');
+  INTERESTS.forEach(i => {
+    const el = document.createElement('div');
+    el.className = 'interest-item';
+    el.dataset.id = i.id;
+    el.innerHTML = '<span class="iemoji">'+i.emoji+'</span><span class="ilabel">'+i.label+'</span>';
+    el.onclick = () => {
+      el.classList.toggle('selected');
+      state.interests = [...ig.querySelectorAll('.selected')].map(x => x.dataset.id);
+    };
+    ig.appendChild(el);
+  });
+
+  const st = document.getElementById('strengthTags');
+  STRENGTH_SUBJECTS.forEach(s => {
+    const el = document.createElement('span');
+    el.className = 'tag';
+    el.textContent = s;
+    el.onclick = () => {
+      el.classList.toggle('selected');
+      state.strengths = [...st.querySelectorAll('.selected')].map(x => x.textContent.trim());
+    };
+    st.appendChild(el);
+  });
+
+  const sTags = document.getElementById('subjectTags');
+  ALL_SUBJECTS.forEach(s => {
+    const el = document.createElement('span');
+    el.className = 'tag';
+    el.textContent = s;
+    el.onclick = () => {
+      el.classList.toggle('selected');
+      state.subjects = [...sTags.querySelectorAll('.selected')].map(x => x.textContent.trim());
+    };
+    sTags.appendChild(el);
+  });
+
+  document.getElementById('examType').onchange = () => {
+    state.examType = document.getElementById('examType').value;
+    document.getElementById('subjectSelection').style.display = (state.examType.startsWith('3+')) ? 'block' : 'none';
+  };
+
+  document.getElementById('grade').onchange = () => { state.grade = document.getElementById('grade').value; };
+  document.getElementById('rankPercent').oninput = function() { state.rankPercent = this.value; };
+  document.getElementById('estimatedScore').oninput = function() { state.estimatedScore = this.value; };
+  document.getElementById('extraInfo').oninput = function() { state.extraInfo = this.value; };
+
+  document.getElementById('uniSearch').oninput = () => renderUniList();
+  document.getElementById('uniFilter').onchange = () => renderUniList();
+
+  document.getElementById('majorSearch').oninput = () => renderMajorList();
+  document.getElementById('majorFilter').onchange = () => renderMajorList();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+/* =================================================================
+   NAVIGATION
+   ================================================================= */
+function goToStep(n) {
+  state.step = n;
+  document.querySelectorAll('.page').forEach((p,i) => p.classList.toggle('active', i===n));
+  document.querySelectorAll('.step-indicator').forEach((el,i) => {
+    el.classList.toggle('active', i===n);
+    el.classList.toggle('done', i<n);
+  });
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function nextStep() {
+  const next = state.step + 1;
+  if (next >= 4) return;
+  if (state.step === 0) {
+    if (!state.province) { alert('请选择你的省份！'); return; }
+    if (state.examType.startsWith('3+') && state.subjects.length === 0) { alert('请选择你的选考科目！'); return; }
+    if (!state.estimatedScore && !state.rankPercent) { alert('请至少填写预估分数或年级排名！'); return; }
+  }
+  if (state.step === 1) {
+    if (!state.selectedUniId) { alert('请选择一所目标院校！'); return; }
+  }
+  if (state.step === 2) {
+    if (!state.selectedMajor) { alert('请选择一个目标专业！'); return; }
+  }
+  if (state.step === 0) prepareUniList();
+  if (state.step === 1) prepareMajorList();
+  if (state.step === 2) generateRoadmap();
+  goToStep(next);
+}
+
+function prevStep() {
+  const prev = state.step - 1;
+  if (prev < 0) return;
+  goToStep(prev);
+}
+
+function resetAll() {
+  if (!confirm('确定要重新开始吗？当前进度将丢失。')) return;
+  state.selectedUniId = null;
+  state.selectedMajor = '';
+  goToStep(0);
+}
+
+/* =================================================================
+   PAGE 1: UNIVERSITIES
+   ================================================================= */
+function prepareUniList() {
+  renderUniList();
+}
+
+function renderUniList() {
+  const container = document.getElementById('uniList');
+  const filter = document.getElementById('uniFilter').value;
+  const query = document.getElementById('uniSearch').value.toLowerCase().trim();
+
+  const score = parseInt(state.estimatedScore) || 0;
+  const isScience = state.examType === '理科' || state.examType === '3+1+2' || state.examType === '3+3';
+
+  let list = UNIVERSITIES.filter(u => {
+    if (filter !== 'all' && u.level !== filter) return false;
+    if (query && !u.name.includes(query) && !u.city.includes(query)) return false;
+    const sData = u.scores[state.province] || u.scores['江西'];
+    const refScore = sData ? (isScience ? sData.理科 : sData.文科) : null;
+    if (refScore && score > 0) {
+      if (Math.abs(refScore - score) > 50) return false;
+    }
+    return true;
+  });
+
+  if (score > 0) {
+    list.sort((a,b) => {
+      const sa = (a.scores[state.province] || a.scores['江西']);
+      const sb = (b.scores[state.province] || b.scores['江西']);
+      const ra = sa ? (isScience ? sa.理科 : sa.文科) || 999 : 999;
+      const rb = sb ? (isScience ? sb.理科 : sb.文科) || 999 : 999;
+      return Math.abs(ra - score) - Math.abs(rb - score);
+    });
+  }
+
+  document.getElementById('uniCount').textContent = '匹配 '+list.length+' 所院校';
+
+  if (list.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:#64748b">没有找到匹配的院校，请调整筛选条件或分数范围。</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  list.forEach(u => {
+    const sData = u.scores[state.province] || u.scores['江西'];
+    const refScore = sData ? (isScience ? sData.理科 : sData.文科) : null;
+    const card = document.createElement('div');
+    card.className = 'uni-card' + (state.selectedUniId === u.id ? ' selected' : '');
+    card.innerHTML = '<div class="rank">'+u.rank+'</div><div class="info"><h4>'+u.name+'</h4><div class="meta">'+u.city+' · '+u.level+' · '+u.topMajors.slice(0,3).join('、')+'…</div></div>'+(refScore ? '<div class="score-badge">参考 '+refScore+'分</div>' : '');
+    card.onclick = () => { showUniDetail(u.id); };
+    container.appendChild(card);
+  });
+}
+
+function showUniDetail(id) {
+  const u = UNIVERSITIES.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('modalUniName').textContent = u.name;
+  document.getElementById('modalUniDesc').textContent = u.desc;
+
+  const isScience = state.examType === '理科' || state.examType === '3+1+2' || state.examType === '3+3';
+  const sData = u.scores[state.province] || u.scores['江西'];
+  const sHtml = sData ? '<div style="display:flex;gap:12px;font-size:.88rem;background:#f8faff;padding:10px 14px;border-radius:8px"><span>📊 理科参考线: <strong style="color:#2563eb">'+(sData.理科 ?? '-')+'</strong>分</span><span>📊 文科参考线: <strong style="color:#2563eb">'+(sData.文科 ?? '-')+'</strong>分</span></div>' : '<div style="background:#f8faff;padding:10px 14px;border-radius:8px;font-size:.85rem;color:#64748b">暂无该省录取线数据（参考全国平均水平）</div>';
+  document.getElementById('modalUniScores').innerHTML = sHtml;
+
+  const mContainer = document.getElementById('modalUniMajors');
+  mContainer.innerHTML = u.topMajors.map(m => '<span class="tag" style="cursor:default;background:#eff6ff;border-color:#bfdbfe;color:#2563eb">'+m+'</span>').join('');
+
+  document.getElementById('uniModal').dataset.uniId = u.id;
+  document.getElementById('uniModal').classList.add('show');
+}
+
+function closeUniModal() {
+  document.getElementById('uniModal').classList.remove('show');
+}
+
+function selectUniFromModal() {
+  const id = document.getElementById('uniModal').dataset.uniId;
+  state.selectedUniId = id;
+  document.getElementById('uniNextBtn').disabled = false;
+  closeUniModal();
+  renderUniList();
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) closeUniModal();
+});
+
+/* =================================================================
+   PAGE 2: MAJORS
+   ================================================================= */
+function prepareMajorList() {
+  const u = UNIVERSITIES.find(x => x.id === state.selectedUniId);
+  if (!u) return;
+
+  document.getElementById('selectedUniName').textContent = u.name;
+  document.getElementById('selectedUniDesc').textContent = u.desc.split('。')[0]+'。';
+
+  const sData = u.scores[state.province] || u.scores['江西'];
+  document.getElementById('scoreScience').textContent = sData?.理科 ?? '-';
+  document.getElementById('scoreArts').textContent = sData?.文科 ?? '-';
+
+  const mf = document.getElementById('majorFilter');
+  mf.innerHTML = '<option value="all">全部类别</option>';
+  const cats = new Set();
+  u.majors.forEach(m => {
+    for (const [cat, list] of Object.entries(MAJOR_CATEGORIES)) {
+      if (list.includes(m)) { cats.add(cat); break; }
+    }
+  });
+  [...cats].sort().forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    mf.appendChild(opt);
+  });
+
+  renderMajorList();
+}
+
+function renderMajorList() {
+  const u = UNIVERSITIES.find(x => x.id === state.selectedUniId);
+  if (!u) return;
+  const container = document.getElementById('majorList');
+  const filter = document.getElementById('majorFilter').value;
+  const query = document.getElementById('majorSearch').value.toLowerCase().trim();
+
+  let majors = u.majors.filter(m => {
+    if (query && !m.includes(query)) return false;
+    if (filter !== 'all') {
+      const list = MAJOR_CATEGORIES[filter] || [];
+      if (!list.includes(m)) return false;
+    }
+    return true;
+  });
+
+  const scored = majors.map(m => ({
+    name: m, match: calcMatchScore(m, u), cat: getMajorCategory(m), req: getMajorReq(m)
+  }));
+  scored.sort((a,b) => b.match - a.match);
+
+  document.getElementById('majorCount').textContent = '匹配 '+scored.length+' 个专业';
+
+  if (scored.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b">没有匹配的专业，请调整筛选条件。</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  scored.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'major-card' + (state.selectedMajor === m.name ? ' selected' : '');
+    const matchColor = m.match >= 80 ? '#16a34a' : m.match >= 60 ? '#ca8a04' : '#64748b';
+    card.innerHTML = '<h4>'+m.name+'</h4><div class="cat">'+m.cat+'</div>'+(m.req ? '<span class="req">选科: '+m.req+'</span>' : '')+'<div class="match" style="color:'+matchColor+'">匹配度 '+m.match+'%</div>';
+    card.onclick = () => {
+      state.selectedMajor = m.name;
+      document.getElementById('majorNextBtn').disabled = false;
+      container.querySelectorAll('.major-card').forEach(x => x.classList.remove('selected'));
+      card.classList.add('selected');
+    };
+    container.appendChild(card);
+  });
+}
+
+function getMajorCategory(major) {
+  for (const [cat, list] of Object.entries(MAJOR_CATEGORIES)) {
+    if (list.includes(major)) return cat;
+  }
+  return '其他';
+}
+
+function getMajorReq(major) {
+  const cat = getMajorCategory(major);
+  const req = MAJOR_SUBJECT_REQ[cat];
+  return req ? req.join('、') : '';
+}
+
+function calcMatchScore(majorName, uni) {
+  let score = 50;
+  const cat = getMajorCategory(majorName);
+  state.interests.forEach(intId => {
+    const related = INTEREST_MAJOR_MAP[intId] || [];
+    if (related.includes(cat)) score += 8;
+  });
+  score = Math.min(score, 95);
+  state.strengths.forEach(s => {
+    const related = STRENGTH_MAJOR_MAP[s] || [];
+    if (related.includes(cat)) score += 5;
+  });
+  score = Math.min(score, 100);
+  const req = MAJOR_SUBJECT_REQ[cat] || [];
+  if (req.length > 0 && state.subjects.length > 0) {
+    const satisfied = req.filter(r => state.subjects.includes(r)).length;
+    const pct = satisfied / req.length;
+    score += Math.round(pct * 15);
+  } else if (req.length === 0) {
+    score += 10;
+  }
+  score = Math.min(score, 100);
+  return Math.round(score);
+}
+
+/* =================================================================
+   PAGE 3: ROADMAP
+   ================================================================= */
+function generateRoadmap() {
+  const u = UNIVERSITIES.find(x => x.id === state.selectedUniId);
+  if (!u) return;
+
+  document.getElementById('finalUni').textContent = u.name;
+  document.getElementById('finalMajor').textContent = state.selectedMajor;
+  document.getElementById('finalProvince').textContent = state.province;
+  document.getElementById('finalGrade').textContent = state.grade;
+  document.getElementById('finalScore').textContent = state.estimatedScore ? state.estimatedScore+'分' : '待定';
+
+  const isScience = state.examType === '理科' || state.examType === '3+1+2' || state.examType === '3+3';
+  const sData = u.scores[state.province] || u.scores['江西'];
+  const targetScore = sData ? (isScience ? sData.理科 : sData.文科) || 660 : 660;
+  const gap = Math.max(0, targetScore - (parseInt(state.estimatedScore) || 0));
+  const cat = getMajorCategory(state.selectedMajor);
+  const req = MAJOR_SUBJECT_REQ[cat] || [];
+
+  document.getElementById('summaryGrid').innerHTML = '<div class="summary-item"><div class="s-val">'+targetScore+'</div><div class="s-label">目标分数线</div></div><div class="summary-item"><div class="s-val">'+gap+'</div><div class="s-label">分数差距</div></div><div class="summary-item"><div class="s-val">'+state.selectedMajor+'</div><div class="s-label">目标专业</div></div>';
+
+  const container = document.getElementById('roadmapContainer');
+  container.innerHTML = '';
+
+  const phases = buildPhases(gap, targetScore, req, cat, u, isScience);
+  const colors = ['#3b82f6','#8b5cf6','#f59e0b','#10b981','#ef4444','#06b6d4'];
+  phases.forEach((p, pi) => {
+    const phaseDiv = document.createElement('div');
+    phaseDiv.className = 'rm-phase';
+    let html = '<h3><span class="phase-icon" style="background:'+colors[pi]+'"></span> '+p.name+'</h3>';
+    p.tasks.forEach(t => {
+      html += '<div class="rm-task"><div class="cb"><input type="checkbox" onchange="this.parentElement.parentElement.classList.toggle(\'done\')"></div><div class="content"><div class="title">'+t.title+'</div>'+(t.desc ? '<div class="desc">'+t.desc+'</div>' : '')+(t.time ? '<div class="time">⏱ '+t.time+'</div>' : '')+'</div></div>';
+    });
+    phaseDiv.innerHTML = html;
+    container.appendChild(phaseDiv);
+  });
+
+  const tips = document.getElementById('tipsContainer');
+  tips.innerHTML = buildTips(gap, targetScore, req, u, state.selectedMajor);
+}
+
+function buildPhases(gap, targetScore, req, cat, uni, isScience) {
+  const phases = [];
+
+  phases.push({
+    name: '阶段一：明确目标 · 深入了解',
+    tasks: [
+      {title:'深入了解目标专业', desc:'详细了解「'+state.selectedMajor+'」的培养方案、课程设置、就业方向和研究方向', time:'1-2 周'},
+      {title:'了解目标大学', desc:'研究 '+uni.name+' 的校园文化、专业实力、保研率、就业质量等', time:'1 周'},
+      {title:'分析历年录取数据', desc:'查看近3年 '+uni.name+' 在'+state.province+'省'+(isScience?'理科':'文科')+'的录取分数线、位次变化趋势', time:'3 天'},
+      {title:'制定个人目标分数', desc:'将目标 '+targetScore+' 分分解到各科目，制定每个科目的目标分', time:'1 周'},
+    ]
+  });
+
+  const studyTasks = [
+    {title:'优先攻克弱势科目', desc:'根据差距 '+gap+' 分，优先提升提分空间最大的科目；每天额外投入 1-2 小时', time:'持续进行'},
+    {title:'重点强化相关科目', desc: req.length > 0 ? '目标专业要求'+req.join('、')+'，需重点投入这些科目' : '强化与目标专业相关的核心科目', time:'持续进行'},
+    {title:'建立知识体系框架', desc:'每学完一个单元用思维导图总结，构建完整的知识框架', time:'每周'},
+    {title:'真题训练与错题管理', desc:'每周固定时间做高考真题，建立并定期复习错题本', time:'每周'},
+    {title:'定期模拟测试', desc:'每月进行一次全科模拟测试，对标目标分数检验进度', time:'每月'},
+  ];
+  if (gap > 30) {
+    studyTasks.unshift({title:'制定追赶计划', desc:'当前差距较大（'+gap+'分），建议制定详细的每日提分计划，集中突破基础题型和中档题', time:'即时'});
+  }
+  phases.push({name: '阶段二：学业提升 · 系统备战', tasks: studyTasks});
+
+  phases.push({
+    name: '阶段三：综合素质 · 突出亮点',
+    tasks: [
+      {title:'参加学科竞赛', desc:'参与数学、物理、化学或信息学等与目标专业相关的竞赛，争取省二等奖以上', time:'根据竞赛时间安排'},
+      {title:'参与科研/实践项目', desc:'参加青少年科技创新大赛、研究性学习课题等，积累项目经验', time:'学期内'},
+      {title:'准备强基计划/综合评价', desc: uni.level==='985' ? uni.name+' 有强基计划招生，了解报名条件和校考内容，提前准备' : '关注综合评价招生政策', time:'高三上学期重点关注'},
+      {title:'拓展专业相关阅读', desc:'阅读「'+state.selectedMajor+'」相关入门书籍、行业报告，培养专业兴趣', time:'课余时间'},
+      {title:'积累面试素材', desc:'整理自己参加过的活动、阅读过的书籍、解决问题的经历等，为面试做准备', time:'持续积累'},
+    ]
+  });
+
+  phases.push({
+    name: '阶段四：冲刺阶段 · 精准发力',
+    tasks: [
+      {title:'二轮/三轮复习规划', desc:'针对高考题型进行专项突破，强化高频考点和薄弱环节', time:'高三下学期'},
+      {title:'全真模拟训练', desc:'按高考时间和规则进行全真模拟，训练答题节奏和心态', time:'每周 1-2 次'},
+      {title:'志愿填报研究', desc:'深入了解 '+uni.name+' 各专业的录取规则、专业级差、调剂政策等', time:'高三下学期'},
+      {title:'强基/综评报名与备考', desc:'' + (uni.level==='985' ? '准备'+uni.name+'强基计划的校考（笔试+面试）' : '准备综合评价报名材料'), time:'高三上学期末至下学期初'},
+      {title:'心态调整与健康管理', desc:'保持规律作息、适度运动，保持稳定心态迎接高考', time:'持续'},
+    ]
+  });
+
+  phases.push({
+    name: '阶段五：高考与录取',
+    tasks: [
+      {title:'考前最后调整', desc:'回归基础，调整作息，熟悉考场', time:'考前 2 周'},
+      {title:'高考', desc:'以平稳心态迎接高考，发挥出真实水平', time:'6月7-8日'},
+      {title:'估分与志愿填报', desc:'根据估分和历年位次，合理填报志愿，将'+uni.name+'作为目标院校', time:'6月中下旬'},
+      {title:'强基校考（如需）', desc:'如果通过强基初审，参加高校组织的校考', time:'7月初'},
+      {title:'等待录取，规划未来', desc:'录取后提前了解专业课程、联系学长学姐，为大学做准备', time:'7-8月'},
+    ]
+  });
+
+  return phases;
+}
+
+function buildTips(gap, targetScore, req, uni, major) {
+  const tips = [];
+  if (gap > 80) {
+    tips.push('⚠️ 当前与目标分数差距较大，建议保持进取心态的同时，也可考虑备选方案，如选择分数线稍低但专业实力强劲的同层次院校。');
+  }
+  if (req.length > 0 && state.subjects.length > 0) {
+    const satisfied = req.filter(r => state.subjects.includes(r)).length;
+    if (satisfied < req.length) {
+      tips.push('📌 注意！'+major+'要求选考'+req.join('、')+'，你目前未选择'+req.filter(r=>!state.subjects.includes(r)).join('、')+'。如果条件允许，建议咨询学校是否可以调整选科。');
+    }
+  }
+  tips.push('💡 强基计划是进入985名校的重要通道之一，如果数学、物理等基础学科有突出优势，可重点关注。');
+  tips.push('📖 利用好假期时间进行系统性的知识梳理和专题突破，假期是拉开差距的关键时期。');
+  tips.push('🎯 定期回顾和调整计划，每个月评估一次进度，根据实际情况灵活调整策略。');
+  tips.push('🤝 建议找到已经考入目标大学和专业的学长学姐，他们的经验非常宝贵。可以关注知乎、B站、小红书等平台上的经验分享。');
+
+  if (state.grade === '高一') {
+    tips.push('🌟 高一阶段最重要的是打好基础，培养良好的学习习惯，同时广泛探索兴趣方向，不必过早焦虑具体分数。');
+  } else if (state.grade === '高二') {
+    tips.push('⚡ 高二是成绩定型的关键时期，需要保持高强度学习节奏，同时开始关注目标大学的招生政策。');
+  } else if (state.grade.startsWith('高三')) {
+    tips.push('🔥 高三阶段务必保持稳定的心理状态，适度紧张但不焦虑。每次模拟考后做好复盘，比分数更重要的是发现和解决问题。');
+  }
+
+  return tips.map(t => '<p style="font-size:.88rem;color:#475569;margin-bottom:10px;display:flex;gap:8px"><span>'+t+'</span></p>').join('');
+}
+</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js")["catch"](function(){})})}</script>
+</body>
+</html>

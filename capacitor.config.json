@@ -1,0 +1,8 @@
+﻿{
+  "appId": "com.uniplanner.app",
+  "appName": "大学规划",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

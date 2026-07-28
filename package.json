@@ -1,0 +1,15 @@
+{
+  "name": "uni-planner",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Run: npx cap add android 然后 npx cap open android'"
+  },
+  "dependencies": {
+    "@capacitor/core": "^5.7.8"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/cli": "^5.7.0"
+  }
+}

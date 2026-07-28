@@ -1,0 +1,17 @@
+﻿{
+  "name": "大学规划智能体",
+  "short_name": "大学规划",
+  "description": "帮助高中生发现目标大学和专业，生成个性化的备考路线图",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a2332",
+  "theme_color": "#2563eb",
+  "icons": [
+    {"src": "icons/icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src": "icons/icon-512.png","sizes":"512x512","type":"image/png"},
+    {"src": "icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"maskable"}
+  ],
+  "categories": ["education","productivity"],
+  "lang": "zh-CN"
+}
