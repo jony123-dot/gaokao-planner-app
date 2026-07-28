@@ -20,17 +20,19 @@ jobs:
       - run: npm install
       - run: npx cap copy android
       - uses: android-actions/setup-android@v3
+
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: List outputs
-        working-directory: android
-        run: |
-          find app/build -name "*.apk" -type f 2>/dev/null || echo "No APK found"
-          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs dir at all"
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: UniPlanner-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: v1.0.${{ github.run_number }}
+          name: "大学规划 APK v1.0.${{ github.run_number }}"
+          body: "自动构建的 APK 安装包"
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
+          fail_on_unmatched_files: false
