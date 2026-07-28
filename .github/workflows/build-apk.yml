@@ -17,28 +17,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install Android SDK
-        run: |
-          mkdir -p $HOME/android
-          cd $HOME/android
-          curl -sL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q cmdline-tools.zip
-          yes | cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android --licenses > /dev/null 2>&1 || true
-          cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1
-          echo "ANDROID_SDK_ROOT=$HOME/android" >> $GITHUB_ENV
-
       - run: npm install
+      - uses: android-actions/setup-android@v3
       - run: npx cap copy android
-
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
-          ./gradlew assembleDebug --no-daemon 2>&1
-
-      - name: Upload
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew assembleDebug --no-daemon
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: UniPlanner-APK
