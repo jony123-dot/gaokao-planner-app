@@ -19,14 +19,10 @@ jobs:
           node-version: 20
       - run: npm install
       - uses: android-actions/setup-android@v3
-
-      # 关键补丁：让 appUrl 带上斜杠
-      - name: Patch Capacitor Bridge.java
+      - name: Patch Bridge.java
         run: |
           sed -i 's/webView\.loadUrl(appUrl);/webView.loadUrl(appUrl + "\/");/g' \
             node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
-          echo "Bridge.java patched"
-
       - run: npx cap copy android
       - name: Build APK
         working-directory: android
@@ -34,6 +30,8 @@ jobs:
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+      - name: Find APK
+        run: find . -name "*.apk" -type f 2>/dev/null
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -43,4 +41,4 @@ jobs:
         if: success()
         with:
           name: UniPlanner-APK
-          path: "**/*.apk"
+          path: "**/app-debug.apk"
