@@ -1,8 +1,8 @@
-锘縶
+{
   "appId": "com.uniplanner.app",
-  "appName": "澶у瑙勫垝",
+  "appName": "大学规划",
   "webDir": "www",
   "server": {
-    "androidScheme": "capacitor"
+    "androidScheme": "http"
   }
 }
