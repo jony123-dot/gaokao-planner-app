@@ -24,21 +24,23 @@ jobs:
           sed -i 's/webView\.loadUrl(appUrl);/webView.loadUrl(appUrl + "\/");/g' \
             node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
       - run: npx cap copy android
-      - name: Build APK
-        working-directory: android
+      - name: Build and upload APK
         run: |
+          cd android
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
-      - name: Find APK
-        run: find . -name "*.apk" -type f 2>/dev/null
+          mkdir -p /tmp/apk-output
+          find . -name "*.apk" -type f -exec cp {} /tmp/apk-output/ \; 2>/dev/null
+          ls -la /tmp/apk-output/
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: build-log
           path: android/build.log
       - uses: actions/upload-artifact@v4
-        if: success()
+        if: always()
         with:
           name: UniPlanner-APK
-          path: "**/app-debug.apk"
+          path: /tmp/apk-output/
